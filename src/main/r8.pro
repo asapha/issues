@@ -2,6 +2,8 @@
 	public static void main(java.lang.String[]);
 }
 
+#-keep class ** { *; }
+
 # From https://github.com/JetBrains/compose-multiplatform/blob/master/gradle-plugins/compose/src/main/resources/default-compose-desktop-rules.pro
 -keep class kotlin.** { *; }
 -keep class org.jetbrains.skia.** { *; }
