@@ -1,4 +1,4 @@
-import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
   kotlin("jvm")
@@ -6,31 +6,94 @@ plugins {
   id("org.jetbrains.kotlin.plugin.compose")
 }
 
-group = "com.example"
-version = "1.0-SNAPSHOT"
-
 repositories {
   mavenCentral()
-  maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
   google()
 }
 
+// Initial r8 setup from https://github.com/TWiStErRob/repros/tree/main/r8/fastutil-invokespecial-indirect-superinterface
+
+val r8Deps: Configuration = configurations.dependencyScope("r8").get()
+
 dependencies {
-  // Note, if you develop a library, you should use compose.desktop.common.
-  // compose.desktop.currentOs should be used in launcher-sourceSet
-  // (in a separate module for demo project and in testMain).
-  // With compose.desktop.common you will also lose @Preview functionality
   implementation(compose.desktop.currentOs)
+  r8Deps("com.android.tools:r8:8.2.47")
 }
 
 compose.desktop {
   application {
     mainClass = "MainKt"
-
-    nativeDistributions {
-      targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-      packageName = "r8-issue-repro"
-      packageVersion = "1.0.0"
-    }
   }
+}
+
+kotlin {
+  jvmToolchain(17)
+}
+
+val launcher = javaToolchains.launcherFor {
+  languageVersion.set(JavaLanguageVersion.of(17))
+}
+
+val fatJar = tasks.register<Jar>("fatJar") {
+  manifest {
+    attributes(
+      "Main-Class" to "MainKt"
+    )
+  }
+  archiveClassifier = "fat"
+  dependsOn(configurations.runtimeClasspath)
+  from(configurations.runtimeClasspath.map { it.map(::zipTree) })
+  with(tasks.jar.get())
+  exclude(
+    // JVM metadata.
+    "**/module-info.class",
+    // Kotlin metadata.
+    "**/*.kotlin_builtins",
+    "**/*.kotlin_module",
+    "**/*.kotlin_metadata",
+    // Maven metadata.
+    "META-INF/maven/**",
+  )
+  duplicatesStrategy = DuplicatesStrategy.FAIL
+}
+
+val r8: Provider<out Configuration> = configurations.resolvable("r8RuntimeClasspath") {
+  extendsFrom(r8Deps)
+}
+
+val r8Jar = tasks.register<JavaExec>("r8Jar") {
+  val r8File: Provider<RegularFile> = base.libsDirectory.flatMap { libs ->
+    libs.file(base.archivesName.map { "${it}-r8.jar" })
+  }
+  val rulesFile = layout.projectDirectory.file("src/main/r8.txt")
+  val configFile = base.libsDirectory.file("r8-config.txt")
+  val fatJarFile = fatJar.flatMap { it.archiveFile }
+  inputs.file(fatJarFile)
+    .withPropertyName("fatJarFile")
+    .withPathSensitivity(PathSensitivity.NONE)
+  inputs.file(rulesFile)
+    .withPropertyName("rulesFile")
+    .withPathSensitivity(PathSensitivity.NONE)
+    .normalizeLineEndings()
+  outputs.file(r8File)
+  outputs.file(configFile)
+
+  // R8 uses the executing JDK to determine the classfile target.
+//  javaLauncher = javaLauncher.get().metadata.installationPath.asFile.absolutePath
+  javaLauncher = launcher
+  maxHeapSize = "1G"
+
+  classpath(r8)
+  mainClass = "com.android.tools.r8.R8"
+  args = listOf(
+    "--release",
+    "--classfile",
+    "--pg-conf", rulesFile.asFile.absolutePath,
+    "--pg-conf-output", configFile.get().asFile.absolutePath,
+    "--output", r8File.get().asFile.absolutePath,
+    "--lib", javaLauncher.get().metadata.installationPath.asFile.absolutePath.also {
+      println("Using JDK: $it")
+    },
+    fatJarFile.get().asFile.absolutePath,
+  )
 }
