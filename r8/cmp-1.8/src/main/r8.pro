@@ -2,7 +2,9 @@
 	public static void main(java.lang.String[]);
 }
 
-#-keep class ** { *; }
+# doesn't affect the issue
+-dontobfuscate
+# -keep class ** {*;}
 
 # From https://github.com/JetBrains/compose-multiplatform/blob/master/gradle-plugins/compose/src/main/resources/default-compose-desktop-rules.pro
 -keep class kotlin.** { *; }
