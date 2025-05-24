@@ -66,7 +66,7 @@ val r8Jar = tasks.register<JavaExec>("r8Jar") {
   val r8File: Provider<RegularFile> = base.libsDirectory.flatMap { libs ->
     libs.file(base.archivesName.map { "${it}-r8.jar" })
   }
-  val rulesFile = layout.projectDirectory.file("src/main/r8.txt")
+  val rulesFile = layout.projectDirectory.file("src/main/r8.pro")
   val configFile = base.libsDirectory.file("r8-config.txt")
   val fatJarFile = fatJar.flatMap { it.archiveFile }
   inputs.file(fatJarFile)
