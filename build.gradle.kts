@@ -18,7 +18,7 @@ val r8Deps: Configuration = configurations.dependencyScope("r8").get()
 
 dependencies {
   implementation(compose.desktop.currentOs)
-  r8Deps("com.android.tools:r8:8.2.47")
+  r8Deps("com.android.tools:r8:8.7.40")
 }
 
 compose.desktop {
