@@ -1,4 +1,4 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import kotlin.io.extension
 
 plugins {
   kotlin("jvm")
@@ -9,6 +9,7 @@ plugins {
 repositories {
   mavenCentral()
   google()
+  maven(url = "https://storage.googleapis.com/r8-releases/raw")
 }
 
 // Initial r8 setup from https://github.com/TWiStErRob/repros/tree/main/r8/fastutil-invokespecial-indirect-superinterface
@@ -96,4 +97,14 @@ val r8Jar = tasks.register<JavaExec>("r8Jar") {
     },
     fatJarFile.get().asFile.absolutePath,
   )
+}
+
+val runR8 = tasks.register<JavaExec>("runR8") {
+  val jar =
+    r8Jar.map { it.outputs.files.filter { it.extension == "jar" }.singleFile }
+
+  inputs.files(jar)
+
+  mainClass.set("MainKt")
+  classpath = files(jar)
 }
