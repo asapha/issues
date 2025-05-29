@@ -10,6 +10,7 @@ repositories {
   mavenCentral()
   google()
   maven(url = "https://storage.googleapis.com/r8-releases/raw")
+  maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
 }
 
 // Initial r8 setup from https://github.com/TWiStErRob/repros/tree/main/r8/fastutil-invokespecial-indirect-superinterface
